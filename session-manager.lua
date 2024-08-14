@@ -1,7 +1,9 @@
-local wezterm = require("wezterm")
+local wezterm = require 'wezterm'
+-- local os = require 'os'
 local session_manager = {}
-local os = wezterm.target_triple
-
+local uname = wezterm.target_triple
+local wezterm_user_dir = '/.local/share/wezterm'
+   
 --- Displays a notification in WezTerm.
 -- @param message string: The notification message to be displayed.
 local function display_notification(message)
@@ -74,10 +76,10 @@ end
 -- @param workspace_data table: The data structure containing the saved workspace state.
 local function recreate_workspace(window, workspace_data)
   local function extract_path_from_dir(working_directory)
-    if os == "x86_64-pc-windows-msvc" then
+    if uname == "x86_64-pc-windows-msvc" then
       -- On Windows, transform 'file:///C:/path/to/dir' to 'C:/path/to/dir'
       return working_directory:gsub("file:///", "")
-    elseif os == "x86_64-unknown-linux-gnu" then
+    elseif uname == "x86_64-unknown-linux-gnu" then
       -- On Linux, transform 'file://{computer-name}/home/{user}/path/to/dir' to '/home/{user}/path/to/dir'
       return working_directory:gsub("^.*(/home/)", "/home/")
     else
@@ -91,7 +93,7 @@ local function recreate_workspace(window, workspace_data)
   end
 
   local tabs = window:mux_window():tabs()
-
+  
   if #tabs ~= 1 or #tabs[1]:panes() ~= 1 then
     wezterm.log_info(
       "Restoration can only be performed in a window with a single tab and a single pane, to prevent accidental data loss.")
@@ -148,14 +150,16 @@ local function recreate_workspace(window, workspace_data)
       -- Restore TTY for Neovim on Linux
       -- NOTE: cwd is handled differently on windows. maybe extend functionality for windows later
       -- This could probably be handled better in general
-      if not (os == "x86_64-pc-windows-msvc") then
-        if not (os == "x86_64-pc-windows-msvc") and pane_data.tty:sub(- #"/bin/nvim") == "/bin/nvim" then
-          new_pane:send_text(pane_data.tty .. " ." .. "\n")
-        else
-          -- TODO - With running npm commands (e.g a running web client) this seems to execute Node, without the arguments
-          new_pane:send_text(pane_data.tty .. "\n")
-        end
-      end
+
+      --if not (uname == "x86_64-pc-windows-msvc") then
+      --  if not (uname == "x86_64-pc-windows-msvc") and pane_data.tty:sub(- #"/bin/nvim") == "/bin/nvim" then
+      --    new_pane:send_text(pane_data.tty .. " ." .. "\n")
+      --  else
+      --    -- TODO - With running npm commands (e.g a running web client) this seems to execute Node, without the arguments
+      --    new_pane:send_text(pane_data.tty .. "\n")
+      --  end
+      --end
+      
     end
   end
 
@@ -183,11 +187,17 @@ local function load_from_json_file(file_path)
   return data
 end
 
+local function base_dir()
+   local path = wezterm.home_dir .. wezterm_user_dir .. '/sessions/' .. wezterm.hostname()
+   os.execute("mkdir -p " .. path)
+   return path
+end
+
 --- Loads the saved json file matching the current workspace.
 function session_manager.restore_state(window)
   local workspace_name = window:active_workspace()
-  local file_path = wezterm.home_dir ..
-      "/.config/wezterm/wezterm-session-manager/wezterm_state_" .. workspace_name .. ".json"
+  -- Construct the file path based on the workspace name
+  local file_path = base_dir() .. '/' .. workspace_name .. '.json'
 
   local workspace_data = load_from_json_file(file_path)
   if not workspace_data then
@@ -195,7 +205,7 @@ function session_manager.restore_state(window)
       'Workspace state file not found for workspace: ' .. workspace_name, nil, 4000)
     return
   end
-
+  
   if recreate_workspace(window, workspace_data) then
     window:toast_notification('WezTerm', 'Workspace state loaded for workspace: ' .. workspace_name,
       nil, 4000)
@@ -205,25 +215,16 @@ function session_manager.restore_state(window)
   end
 end
 
---- Allows to select which workspace to load
-function session_manager.load_state(window)
-  -- TODO: Implement
-  -- Placeholder for user selection logic
-  -- ...
-  -- TODO: Call the function recreate_workspace(workspace_data) to recreate the workspace
-  -- Placeholder for recreation logic...
-end
-
 --- Orchestrator function to save the current workspace state.
 -- Collects workspace data, saves it to a JSON file, and displays a notification.
 function session_manager.save_state(window)
-  local data = retrieve_workspace_data(window)
+  local workspace_data = retrieve_workspace_data(window)
 
   -- Construct the file path based on the workspace name
-  local file_path = wezterm.home_dir .. "/.config/wezterm/wezterm-session-manager/wezterm_state_" .. data.name .. ".json"
-
+  local file_path = base_dir() .. '/' .. workspace_data.name .. '.json'
+  wezterm.log_info("file_path: " .. file_path)
   -- Save the workspace data to a JSON file and display the appropriate notification
-  if save_to_json_file(data, file_path) then
+  if save_to_json_file(workspace_data, file_path) then
     window:toast_notification('WezTerm Session Manager', 'Workspace state saved successfully', nil, 4000)
   else
     window:toast_notification('WezTerm Session Manager', 'Failed to save workspace state', nil, 4000)

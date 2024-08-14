@@ -8,11 +8,9 @@ and restore different sessions or better workspaces and later restore them.
 ## Features
 
 - **Save Session State** Captures the current layout of windows, tabs and panes,
-  along with their working directories and foreground processes.
+  along with their working directories.
 - **restore Session** Reopens a previously saved session that matches the
   current workspace name, restoring its layout and directories.
-- **Load Session (Not implemented yet)** Allows selecting which saved session to
-  load, regardless of the current workspace name.
 
 ## Installation
 
@@ -20,7 +18,8 @@ and restore different sessions or better workspaces and later restore them.
    directory:
 
    ```bash
-   git clone https://github.com/danielcopper/wezterm-session-manager.git ~/.config/wezterm/wezterm-session-manager
+   git clone https://github.com/oubiwann/wezterm-session-manager.git \
+     ~/.config/wezterm/wezterm-session-manager
    ```
 
 2. **Configure WezTerm:** Edit your 'wezterm.lua' file to include the Session
@@ -34,9 +33,8 @@ and restore different sessions or better workspaces and later restore them.
    bindings to trigger the functions of the session manager
 
    ```lua
-   wezterm.on("save_session", function(window) session_manager.save_state(window) end)
-   wezterm.on("load_session", function(window) session_manager.load_state(window) end)
-   wezterm.on("restore_session", function(window) session_manager.restore_state(window) end)
+   wezterm.on("save-session", function(window) session_manager.save_state(window) end)
+   wezterm.on("restore-session", function(window) session_manager.restore_state(window) end)
    ```
 
 4. **Set Keybindings:** Define Keybindings in your 'wezterm.lua' for saving,
@@ -46,9 +44,8 @@ and restore different sessions or better workspaces and later restore them.
    local wezterm = require 'wezterm';
    return {
      keys = {
-      {key = "S", mods = "LEADER", action = wezterm.action{EmitEvent = "save_session"}},
-      {key = "L", mods = "LEADER", action = wezterm.action{EmitEvent = "load_session"}},
-      {key = "R", mods = "LEADER", action = wezterm.action{EmitEvent = "restore_session"}},
+      {key = "S", mods = "LEADER", action = wezterm.action{EmitEvent = "save-session"}},
+      {key = "R", mods = "LEADER", action = wezterm.action{EmitEvent = "restore-session"}},
      },
    }
    ```
